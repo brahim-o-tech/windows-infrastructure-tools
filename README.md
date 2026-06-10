@@ -1,6 +1,6 @@
 # windows-infrastructure-tools
 
-> PowerShell toolkit for Windows infrastructure operations — DNS analysis, KMS activation, and more coming soon.
+> PowerShell toolkit for Windows infrastructure operations — DNS analysis, KMS activation, RDS license auditing, and more coming soon.
 
 ---
 
@@ -19,6 +19,7 @@ They have been anonymized, refactored, and generalized for public release.
 |---|---|
 | `Get-DNSDebugLog.ps1` | Parses Windows DNS Server debug logs into structured PowerShell objects — used for pre-migration dependency mapping and traffic analysis |
 | `Test-KMSActivation.ps1` | Tests KMS server connectivity on port 1688 and activates Windows license via slmgr.vbs — useful during KMS server migrations |
+| `Get-RDSLicenseConfig.ps1` | Audits RDS license server configuration across multiple hosts — supports hardcoded list, input file, or Active Directory query |
 
 ---
 
@@ -91,11 +92,41 @@ Used during KMS server migrations to validate connectivity to the new KMS host b
 # Test and activate against a KMS server
 .\Test-KMSActivation.ps1 -KMSServer "kms.domain.local"
 
-# Custom port
-.\Test-KMSActivation.ps1 -KMSServer "kms.domain.local" -KMSPort 1688
-
 # Test-Port standalone usage
 Test-Port -ComputerName "SERVER01","SERVER02" -Protocol TCP -Port 80,443,1688
+```
+
+---
+
+## Get-RDSLicenseConfig.ps1
+
+Audits RDS license server configuration across multiple Remote Desktop hosts via WMI.
+
+**Real-world use case:**
+Used during RDS license server migrations to verify all hosts point to the correct license server before decommissioning the old one — across a fleet of RDS servers in seconds instead of clicking through each server's admin console.
+
+**Features:**
+- Queries `Root/CIMV2/TerminalServices` WMI namespace remotely
+- Returns: ComputerName, LicensingType, LicensingName, SpecifiedLSList, Status
+- Three input modes — hardcoded list, text file, or Active Directory OU query
+- Graceful error handling — unreachable servers logged as ERROR, processing continues
+- `RDSHOST-INVALID` included in default list to demonstrate error handling behavior
+
+**Requirements:** Windows, PowerShell 5.1+, WinRM enabled on target servers
+
+**Usage:**
+
+```powershell
+# Hardcoded list
+.\Get-RDSLicenseConfig.ps1 -ComputerName "RDSHOST01","RDSHOST02","RDSHOST03"
+
+# From text file
+.\Get-RDSLicenseConfig.ps1 -InputFile "C:\servers\rds-hosts.txt"
+
+# From Active Directory OU
+.\Get-RDSLicenseConfig.ps1 `
+    -SearchBase    "OU=RDS,OU=Servers,DC=domain,DC=local" `
+    -ComputerFilter "*RDS*"
 ```
 
 ---
@@ -106,6 +137,7 @@ Test-Port -ComputerName "SERVER01","SERVER02" -Protocol TCP -Port 80,443,1688
 |---|---|
 | `src/Get-DNSDebugLog.ps1` | DNS debug log parser |
 | `src/Test-KMSActivation.ps1` | KMS connectivity test + Windows activation |
+| `src/Get-RDSLicenseConfig.ps1` | RDS license server configuration audit |
 | `examples/` | Example invocations |
 | `docs/images/` | Architecture diagrams |
 | `LICENSE` | License file |
@@ -120,15 +152,19 @@ Test-Port -ComputerName "SERVER01","SERVER02" -Protocol TCP -Port 80,443,1688
 | PowerShell | 5.1 or later |
 | OS | Windows |
 | Privileges | Administrator (Test-KMSActivation) |
+| WinRM | Enabled on target servers (Get-RDSLicenseConfig) |
 | DNS debug log | Enabled on DNS server (Get-DNSDebugLog) |
 
 ---
 
 ## Credits
 
-`Get-DNSDebugLog` is based on original work by **Ov** — [http://virot.eu](http://virot.eu). Extended and improved by Brahim O.
+`Get-DNSDebugLog` is based on original work by **Ov** — [http://virot.eu](http://virot.eu).
+Extended and improved by Brahim O.
 
-`Test-Port` function adapted from **PoshFunctions** by Bill Riedy — [PowerShell Gallery](https://www.powershellgallery.com/packages/PoshFunctions). Originally inspired by [TechNet Script Center](https://gallery.technet.microsoft.com/scriptcenter/97119ed6-6fb2-446d-98d8-32d823867131).
+`Test-Port` function adapted from **PoshFunctions** by Bill Riedy —
+[PowerShell Gallery](https://www.powershellgallery.com/packages/PoshFunctions).
+Originally inspired by [TechNet Script Center](https://gallery.technet.microsoft.com/scriptcenter/97119ed6-6fb2-446d-98d8-32d823867131).
 
 ---
 
