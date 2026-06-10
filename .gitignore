@@ -55,3 +55,23 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# PowerShell
+*.ps1xml
+*.psm1.bak
+*.psd1.bak
+
+# Logs and transcripts
+*.log
+
+# DNS debug logs — never commit these
+dns.log
+*.log.bak
+
+# Output files
+*.csv
+*.txt
+output/
+
+# Except templates
+!templates/*.csv
