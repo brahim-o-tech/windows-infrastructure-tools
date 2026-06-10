@@ -1,6 +1,6 @@
 # windows-infrastructure-tools
 
-> PowerShell toolkit for Windows infrastructure operations — DNS debug log analysis, and more coming soon.
+> PowerShell toolkit for Windows infrastructure operations — DNS analysis, KMS activation, and more coming soon.
 
 ---
 
@@ -15,7 +15,14 @@ They have been anonymized, refactored, and generalized for public release.
 
 ## Scripts
 
-### `Get-DNSDebugLog.ps1`
+| Script | What it does |
+|---|---|
+| `Get-DNSDebugLog.ps1` | Parses Windows DNS Server debug logs into structured PowerShell objects — used for pre-migration dependency mapping and traffic analysis |
+| `Test-KMSActivation.ps1` | Tests KMS server connectivity on port 1688 and activates Windows license via slmgr.vbs — useful during KMS server migrations |
+
+---
+
+## Get-DNSDebugLog.ps1
 
 Parses Windows DNS Server debug log files into structured PowerShell objects for analysis, reporting, and pre-migration dependency mapping.
 
@@ -54,10 +61,41 @@ Get-DNSDebugLog -Path "\\dc01.domain.local\c$\dns.log" -Ignore $ignore
 **Enable DNS debug logging on Windows DNS Server:**
 
 ```powershell
-# Enable via dnscmd
 dnscmd /config /logLevel 0x6101
 dnscmd /config /logFilePath "C:\Windows\System32\dns\dns.log"
 dnscmd /config /logFileMaxSize 500000000
+```
+
+---
+
+## Test-KMSActivation.ps1
+
+Tests KMS server connectivity on port 1688 and activates Windows via `slmgr.vbs`.
+Includes a reusable `Test-Port` function for TCP/UDP port testing.
+
+**Real-world use case:**
+Used during KMS server migrations to validate connectivity to the new KMS host before switching activation targets — ensuring no machines get stranded without a valid activation path.
+
+**Features:**
+- TCP/UDP port tester with configurable timeout
+- Domain detection via `Get-CimInstance`
+- KMS host assignment + Windows activation via `slmgr.vbs`
+- Exit code validation after each `slmgr` call
+- Portable path via `$env:SystemRoot`
+
+**Requirements:** Windows, PowerShell 5.1+, Administrator rights
+
+**Usage:**
+
+```powershell
+# Test and activate against a KMS server
+.\Test-KMSActivation.ps1 -KMSServer "kms.domain.local"
+
+# Custom port
+.\Test-KMSActivation.ps1 -KMSServer "kms.domain.local" -KMSPort 1688
+
+# Test-Port standalone usage
+Test-Port -ComputerName "SERVER01","SERVER02" -Protocol TCP -Port 80,443,1688
 ```
 
 ---
@@ -67,6 +105,7 @@ dnscmd /config /logFileMaxSize 500000000
 | Path | Description |
 |---|---|
 | `src/Get-DNSDebugLog.ps1` | DNS debug log parser |
+| `src/Test-KMSActivation.ps1` | KMS connectivity test + Windows activation |
 | `examples/` | Example invocations |
 | `docs/images/` | Architecture diagrams |
 | `LICENSE` | License file |
@@ -74,17 +113,22 @@ dnscmd /config /logFileMaxSize 500000000
 
 ---
 
-## Coming soon
+## Requirements summary
 
-- KMS / RDS license server migration toolkit
-- More Windows infrastructure automation scripts
+| Requirement | Details |
+|---|---|
+| PowerShell | 5.1 or later |
+| OS | Windows |
+| Privileges | Administrator (Test-KMSActivation) |
+| DNS debug log | Enabled on DNS server (Get-DNSDebugLog) |
 
 ---
 
 ## Credits
 
-`Get-DNSDebugLog` is based on original work by **Ov** — [http://virot.eu](http://virot.eu).
-Extended, corrected, and improved by Brahim O.
+`Get-DNSDebugLog` is based on original work by **Ov** — [http://virot.eu](http://virot.eu). Extended and improved by Brahim O.
+
+`Test-Port` function adapted from **PoshFunctions** by Bill Riedy — [PowerShell Gallery](https://www.powershellgallery.com/packages/PoshFunctions). Originally inspired by [TechNet Script Center](https://gallery.technet.microsoft.com/scriptcenter/97119ed6-6fb2-446d-98d8-32d823867131).
 
 ---
 
